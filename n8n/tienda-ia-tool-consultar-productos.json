@@ -1,0 +1,138 @@
+{
+  "id": "TiendaToolProd01",
+  "name": "[Tienda] IA - tool consultar_productos",
+  "nodes": [
+    {
+      "id": "6abbfccb-3e69-4602-9d2e-b3fd21eaeae7",
+      "name": "Nota",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -80,
+        -200
+      ],
+      "parameters": {
+        "width": 760,
+        "height": 160,
+        "color": 5,
+        "content": "## Tool: consultar_productos\nLo llama el **Agente comercial** del flujo principal.\nHace GET a la API Node.js (`/api/productos`) y devuelve el catálogo real filtrado.\n**Configura `api_url`** en el nodo *Configuración* (con n8n en Docker usa `http://host.docker.internal:3000`)."
+      }
+    },
+    {
+      "id": "45ff80b5-61e4-45f3-a608-2ae3c63849fb",
+      "name": "Recibir parámetros",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        40
+      ],
+      "parameters": {
+        "inputSource": "workflowInputs",
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "categoria"
+            },
+            {
+              "name": "busqueda"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "3e0b5551-a9ed-4561-a91f-565568bed60a",
+      "name": "Configuración",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        40
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "98d0be5d-fc97-4b9d-aa31-2e46eecd3023",
+              "name": "api_url",
+              "value": "http://localhost:3000",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      }
+    },
+    {
+      "id": "15f39dbb-53b4-401c-92cf-2ad0dadf5ea9",
+      "name": "GET /api/productos",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        40
+      ],
+      "alwaysOutputData": true,
+      "parameters": {
+        "url": "={{ $json.api_url }}/api/productos",
+        "options": {
+          "timeout": 10000
+        }
+      }
+    },
+    {
+      "id": "91d49804-63c6-4e90-8bfc-62b716245f20",
+      "name": "Filtrar y resumir catálogo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        40
+      ],
+      "parameters": {
+        "jsCode": "// Filtra el catálogo real y devuelve solo los campos que necesita el agente.\nconst { categoria = '', busqueda = '' } = $('Recibir parámetros').first().json;\nconst normalizar = (s) => String(s ?? '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase().trim();\nconst cat = normalizar(categoria);\nconst q = normalizar(busqueda);\n\nconst productos = $input.all()\n  .map((item) => item.json)\n  .filter((p) => p && p.id)\n  .filter((p) => !cat || normalizar(p.categoria) === cat)\n  .filter((p) => !q || normalizar(`${p.nombre} ${p.descripcion ?? ''}`).includes(q))\n  .map((p) => ({\n    id: p.id,\n    nombre: p.nombre,\n    categoria: p.categoria,\n    precio: p.precio,\n    stock: p.stock,\n    disponible: p.stock > 0,\n    descripcion: p.descripcion,\n  }));\n\nreturn [{ json: { total: productos.length, productos } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Recibir parámetros": {
+      "main": [
+        [
+          {
+            "node": "Configuración",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Configuración": {
+      "main": [
+        [
+          {
+            "node": "GET /api/productos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET /api/productos": {
+      "main": [
+        [
+          {
+            "node": "Filtrar y resumir catálogo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}
