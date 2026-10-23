@@ -377,4 +377,5 @@ Laboratorio2/
 - **El botón Cancelar se deshabilita** cuando `esCancelable` es falso. El 409 se sigue manejando para el caso en que otra persona cambia la orden mientras la tabla está abierta.
 - **El frontend llama al webhook de n8n directamente**, como pide el laboratorio. En producción conviene pasar por la API con autenticación (Header Auth) y rate limiting.
 #   L a b o r a t o r i o 2  
+ #   L a b o r a t o r i o 2  
  
